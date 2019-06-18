@@ -99,3 +99,61 @@ struct Script
 	void writeToFile(const std::string& file) const;
 
 };
+
+
+
+class FullCodeData : public std::exception {};
+
+
+class ScriptCodeBuilder;
+namespace
+{
+	struct ScriptCodeBuilderNode
+	{
+		const ScriptCodeBuilder* const builder;
+		ScriptCode code;
+		ScriptCodeBuilderNode* next;
+		ScriptCodeBuilderNode* prev;
+	};
+}
+typedef const ScriptCodeBuilderNode* CodeLocation;
+
+
+class ScriptCodeBuilder
+{
+private:
+	using Node = ScriptCodeBuilderNode;
+
+	Node* _front;
+	Node* _back;
+	uint16_t _size;
+
+public:
+	ScriptCodeBuilder();
+	~ScriptCodeBuilder();
+
+	void clear();
+
+	CodeLocation push_back(const ScriptCode code);
+	CodeLocation push_front(const ScriptCode code);
+
+	ScriptCode& front();
+	const ScriptCode& front() const;
+
+	ScriptCode& back();
+	const ScriptCode& back() const;
+
+	CodeLocation insert_before(const CodeLocation location, const ScriptCode code);
+	CodeLocation insert_after(const CodeLocation location, const ScriptCode code);
+
+	uint16_t size() const;
+	bool empty() const;
+
+	void build(Script& script) const;
+
+
+	constexpr ScriptCode& code(const CodeLocation location) { return const_cast<Node*>(location)->code; }
+	constexpr const ScriptCode& code(const CodeLocation location) const { return location->code; }
+};
+
+

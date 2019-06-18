@@ -144,3 +144,123 @@ void Script::writeToFile(const std::string& file) const
 		f.flush();
 	f.close();
 }
+
+
+
+
+ScriptCodeBuilder::ScriptCodeBuilder() :
+	_front{ nullptr },
+	_back{ nullptr },
+	_size{ 0 }
+{}
+
+ScriptCodeBuilder::~ScriptCodeBuilder()
+{
+	clear();
+}
+
+void ScriptCodeBuilder::clear()
+{
+	Node* node = _front;
+	while (node)
+	{
+		Node* const next = node->next;
+		delete node;
+		node = next;
+	}
+	_front = nullptr;
+	_back = nullptr;
+	_size = 0;
+}
+
+CodeLocation ScriptCodeBuilder::push_back(const ScriptCode code)
+{
+	if (_size >= MAX_CODES)
+		throw FullCodeData{};
+
+	if (!_front)
+	{
+		_front = new Node{ this, code, nullptr, nullptr };
+		_back = _front;
+		++_size;
+		return _front;
+	}
+
+	Node* const node{ new Node{ this, code, nullptr, _back } };
+	_back->next = node;
+	_back = node;
+	++_size;
+	return node;
+}
+CodeLocation ScriptCodeBuilder::push_front(const ScriptCode code)
+{
+	if (_size >= MAX_CODES)
+		throw FullCodeData{};
+
+	if (!_front)
+	{
+		_front = new Node{ this, code, nullptr, nullptr };
+		_back = _front;
+		++_size;
+		return _front;
+	}
+
+	Node* const node{ new Node{ this, code, _front, nullptr } };
+	_front->prev = node;
+	_front = node;
+	++_size;
+	return node;
+}
+
+ScriptCode& ScriptCodeBuilder::front() { return _front->code; }
+const ScriptCode& ScriptCodeBuilder::front() const { return _front->code; }
+
+ScriptCode& ScriptCodeBuilder::back() { return _back->code; }
+const ScriptCode& ScriptCodeBuilder::back() const { return _back->code; }
+
+CodeLocation ScriptCodeBuilder::insert_before(const CodeLocation location, const ScriptCode code)
+{
+	if (location->builder != this)
+		throw BadIndex{ "Invalid Builder" };
+	if (_size >= MAX_CODES)
+		throw FullCodeData{};
+	
+	Node* const base = const_cast<Node*>(location);
+	if (!base->prev)
+		return push_front(code);
+
+	Node* node{ new Node{ this, code, base, base->prev } };
+	base->prev->next = node;
+	base->prev = node;
+	++_size;
+	return node;
+}
+CodeLocation ScriptCodeBuilder::insert_after(const CodeLocation location, const ScriptCode code)
+{
+	if (location->builder != this)
+		throw BadIndex{ "Invalid Builder" };
+	if (_size >= MAX_CODES)
+		throw FullCodeData{};
+
+	Node* const base = const_cast<Node*>(location);
+	if (!base->next)
+		return push_back(code);
+
+	Node* node{ new Node{ this, code, base->next, base } };
+	base->next->prev = node;
+	base->next = node;
+	++_size;
+	return node;
+}
+
+uint16_t ScriptCodeBuilder::size() const { return _size; }
+bool ScriptCodeBuilder::empty() const { return _size <= 0; }
+
+void ScriptCodeBuilder::build(Script& script) const
+{
+	auto accessor = script.codes();
+	uint16_t count = 0;
+	for (Node* node = _front; node && count < MAX_CODES; node = node->next)
+		accessor[count++] = node->code;
+}
+

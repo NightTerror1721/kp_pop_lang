@@ -1,6 +1,11 @@
 #pragma once
 
 #include <cinttypes>
+#include <vector>
+
+#define DECL_STATIC_BLOCK(class_name) static int class_name##__static__
+#define STATIC_BLOCK(class_name) int class_name :: class_name##__static__ = []() -> int {
+#define END_STATIC_BLOCK return 0; }();
 
 #define NO_COMMANDS 27U
 #define TOKEN_OFFSET 1000U
@@ -590,6 +595,15 @@ enum ReadOnlyInternal : ScriptCode
 #undef NInternal
 
 
+template<class _Ty>
+void free_ptr_vector(std::vector<_Ty*>& v)
+{
+	for (_Ty* const p : v)
+		if (p)
+			delete p;
+	v.clear();
+}
+
 
 template<typename _Ty>
 void wide_memset(void* const _Dst, const _Ty value, const uintptr_t size)
@@ -597,3 +611,7 @@ void wide_memset(void* const _Dst, const _Ty value, const uintptr_t size)
 	for (uintptr_t i = 0; i < (size & (~7)); ++i)
 		*(reinterpret_cast<_Ty*>(_Dst) + i) = value;
 }
+
+
+
+
